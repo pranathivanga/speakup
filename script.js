@@ -113,6 +113,7 @@ let audioChunks = [];
 let audioContext = null;
 let analyser = null;
 let sourceNode = null;
+let silentGain = null;
 let animFrameId = null;
 let timerInterval = null;
 let countdownSec = 0;
@@ -234,12 +235,33 @@ function setCustomTopic() {
 }
 
 // ── RECORDING ────────────────────────────────────────────────
-async function toggleRecording() {
+
+// Called from the record button: onclick="handleRecordClick()"
+function handleRecordClick() {
   if (isRecording) {
     stopRecording();
   } else {
-    await startRecording();
+    prepareAudioGraph(); // must run synchronously inside user gesture
+    startRecording();
   }
+}
+
+// Creates AudioContext synchronously inside a user gesture so browser allows it
+function prepareAudioGraph() {
+  if (audioContext) return;
+
+  audioContext = new (window.AudioContext || window.webkitAudioContext)();
+  audioContext.resume();
+
+  analyser = audioContext.createAnalyser();
+  analyser.fftSize = 1024;
+  analyser.smoothingTimeConstant = 0;
+
+  // Connect analyser to silent gain → destination to keep graph alive
+  silentGain = audioContext.createGain();
+  silentGain.gain.value = 0;
+  analyser.connect(silentGain);
+  silentGain.connect(audioContext.destination);
 }
 
 async function startRecording() {
@@ -254,39 +276,14 @@ async function startRecording() {
   let stream;
   try {
     stream = await navigator.mediaDevices.getUserMedia({ audio: true, video: false });
-    console.log('Stream active:', stream.active, 'Tracks:', stream.getTracks().length);
   } catch (err) {
     alert('Microphone access was denied or is unavailable. Please allow microphone access in your browser settings.');
     return;
   }
 
-  // ── FIX: Create AudioContext and explicitly resume it ──
-  try {
-    audioContext = new (window.AudioContext || window.webkitAudioContext)();
-    console.log('AudioContext state:', audioContext.state);
-    if (audioContext.state === 'suspended') {
-      await audioContext.resume();
-    }
-  } catch (err) {
-    alert('Could not start audio processing. Please try a different browser.');
-    stream.getTracks().forEach(t => t.stop());
-    return;
-  }
-
-  analyser = audioContext.createAnalyser();
-analyser.fftSize = 1024;
-analyser.smoothingTimeConstant = 0.0;
-
-sourceNode = audioContext.createMediaStreamSource(stream);
-
-// 🔑 IMPORTANT: keep the graph alive
-const silentGain = audioContext.createGain();
-silentGain.gain.value = 0;
-
-sourceNode.connect(analyser);
-analyser.connect(silentGain);
-silentGain.connect(audioContext.destination);
-
+  // Connect mic stream into the already-running analyser
+  sourceNode = audioContext.createMediaStreamSource(stream);
+  sourceNode.connect(analyser);
 
   const mimeType = getSupportedMimeType();
   const options = mimeType ? { mimeType } : {};
@@ -426,7 +423,6 @@ function drawWaveform() {
   const canvas = document.getElementById('waveform');
   const ctx = canvas.getContext('2d');
 
-  // ── FIX: Use clientWidth/clientHeight as fallback for GitHub Pages ──
   const W = canvas.offsetWidth || canvas.clientWidth || 400;
   const H = canvas.offsetHeight || canvas.clientHeight || 64;
   canvas.width = W * window.devicePixelRatio;
