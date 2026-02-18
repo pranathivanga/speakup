@@ -6,7 +6,8 @@ SpeakUp is a frontend-only web app that helps you practice imppromptu speaking b
 
 No account · No install · No backend
 
-🔗 Live Demo: (add link here)
+🔗 Live Demo: https://pranathivanga.github.io/speakup/
+
 
 ✨ Why SpeakUp?
 
@@ -23,7 +24,7 @@ pause frequency
 
 All feedback is instant and private.
 
-🚀 What SpeakUp does
+🚀 What SpeakUp does:
 
 Each practice session:
 
@@ -42,7 +43,7 @@ Each practice session:
 Nothing is uploaded.
 Everything stays in your browser.
 
-🧩 Features
+🧩 Features:
 
 🎙️ Real audio recording (MediaRecorder API)
 
@@ -62,7 +63,7 @@ Everything stays in your browser.
 
 💾 Local persistence using localStorage
 
-🧠 How the analysis works
+🧠 How the analysis works:
 
 Voice activity detected using RMS amplitude (Web Audio API)
 
@@ -76,7 +77,7 @@ No speech-to-text
 No content analysis
 No AI guessing
 
-🛠 Tech Stack
+🛠 Tech Stack:
 
 Languages
 
@@ -100,7 +101,7 @@ No frameworks.
 No dependencies.
 No build step.
 
-▶️ Run locally
+▶️ Run locally:
 git clone https://github.com/yourusername/speakup
 cd speakup
 python -m http.server 8000
