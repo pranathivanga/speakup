@@ -254,6 +254,7 @@ async function startRecording() {
   let stream;
   try {
     stream = await navigator.mediaDevices.getUserMedia({ audio: true, video: false });
+    console.log('Stream active:', stream.active, 'Tracks:', stream.getTracks().length);
   } catch (err) {
     alert('Microphone access was denied or is unavailable. Please allow microphone access in your browser settings.');
     return;
@@ -262,6 +263,7 @@ async function startRecording() {
   // ── FIX: Create AudioContext and explicitly resume it ──
   try {
     audioContext = new (window.AudioContext || window.webkitAudioContext)();
+    console.log('AudioContext state:', audioContext.state);
     if (audioContext.state === 'suspended') {
       await audioContext.resume();
     }
@@ -272,10 +274,19 @@ async function startRecording() {
   }
 
   analyser = audioContext.createAnalyser();
-  analyser.fftSize = 1024;
-  analyser.smoothingTimeConstant = 0.0;
-  sourceNode = audioContext.createMediaStreamSource(stream);
-  sourceNode.connect(analyser);
+analyser.fftSize = 1024;
+analyser.smoothingTimeConstant = 0.0;
+
+sourceNode = audioContext.createMediaStreamSource(stream);
+
+// 🔑 IMPORTANT: keep the graph alive
+const silentGain = audioContext.createGain();
+silentGain.gain.value = 0;
+
+sourceNode.connect(analyser);
+analyser.connect(silentGain);
+silentGain.connect(audioContext.destination);
+
 
   const mimeType = getSupportedMimeType();
   const options = mimeType ? { mimeType } : {};
