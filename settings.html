@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>SpeakUp — Settings</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+<nav>
+  <a href="index.html" class="nav-brand">SpeakUp</a>
+  <div class="nav-links">
+    <a href="index.html">Practice</a>
+    <a href="dashboard.html">Sessions</a>
+    <a href="settings.html" class="active">Settings</a>
+  </div>
+</nav>
+
+<main>
+  <h1>Settings</h1>
+  <p style="color:var(--text2);margin-bottom:28px;">Preferences are saved in your browser automatically.</p>
+
+  <!-- ACCOUNT -->
+  <div class="card">
+    <h2>Your Name</h2>
+    <p style="font-size:15px;margin-bottom:14px;">This is just stored locally — no account needed.</p>
+    <div style="display:flex;gap:10px;align-items:flex-end;">
+      <div style="flex:1;">
+        <label style="font-size:14px;color:var(--text3);font-weight:600;display:block;margin-bottom:6px;text-transform:uppercase;letter-spacing:0.8px;">Display Name</label>
+        <input type="text" id="nameField" placeholder="Your name" maxlength="40" />
+      </div>
+      <button class="btn btn-primary" onclick="saveName()">Save</button>
+    </div>
+  </div>
+
+  <!-- PRACTICE DURATION -->
+  <div class="card">
+    <h2>Practice Duration</h2>
+    <p style="font-size:15px;margin-bottom:8px;">How long should each recording session last before it automatically stops?</p>
+    <div class="radio-group">
+      <input type="radio" name="duration" id="d30" class="radio-option" value="30" />
+      <label for="d30" class="radio-label">30 seconds</label>
+
+      <input type="radio" name="duration" id="d60" class="radio-option" value="60" />
+      <label for="d60" class="radio-label">60 seconds</label>
+
+      <input type="radio" name="duration" id="d90" class="radio-option" value="90" />
+      <label for="d90" class="radio-label">90 seconds</label>
+    </div>
+  </div>
+
+  <!-- TOGGLES -->
+  <div class="card">
+    <h2>Preferences</h2>
+
+    <div class="toggle-row">
+      <div class="toggle-info">
+        <h3>Show Feedback</h3>
+        <p>Display written feedback after each session analysis.</p>
+      </div>
+      <label class="toggle">
+        <input type="checkbox" id="feedbackToggle" onchange="savePref('speakup_feedback', this.checked)" />
+        <span class="toggle-slider"></span>
+      </label>
+    </div>
+
+    <div class="toggle-row">
+      <div class="toggle-info">
+        <h3>Dark Mode</h3>
+        <p>Switch to a dark color scheme.</p>
+      </div>
+      <label class="toggle">
+        <input type="checkbox" id="darkToggle" onchange="toggleDark(this.checked)" />
+        <span class="toggle-slider"></span>
+      </label>
+    </div>
+  </div>
+
+  <!-- DANGER ZONE -->
+  <div class="card" style="border-color:rgba(192,57,43,0.3);">
+    <h2 style="color:#c0392b;">Data</h2>
+    <p style="font-size:15px;margin-bottom:16px;">Your session history is stored only in this browser. Clearing it is permanent.</p>
+    <div style="display:flex;gap:10px;flex-wrap:wrap;">
+      <button class="btn btn-danger" onclick="clearSessions()">Clear All Sessions</button>
+      <button class="btn btn-ghost" onclick="clearEverything()">Reset Everything</button>
+    </div>
+  </div>
+
+
+
+</main>
+
+<div class="toast" id="toast"></div>
+<script src="settings.js"></script>
+</body>
+</html>

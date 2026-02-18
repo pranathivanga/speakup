@@ -1,0 +1,164 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>SpeakUp — Practice</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+
+<!-- ONBOARDING OVERLAY -->
+<div class="onboarding-overlay hidden" id="onboarding">
+  <div class="onboarding-card">
+    <div style="font-size:52px;margin-bottom:12px;">🎙️</div>
+    <h1>Welcome to SpeakUp</h1>
+    <p>Your personal speaking practice companion. Let's get to know you first.</p>
+    <input type="text" id="nameInput" placeholder="What should we call you?" style="margin-bottom:20px;" maxlength="40" />
+    <button class="btn btn-primary w-full" id="nameSubmit" onclick="saveUserName()">Start Practicing</button>
+  </div>
+</div>
+
+<!-- NAV -->
+<nav>
+  <a href="index.html" class="nav-brand">SpeakUp</a>
+  <div class="nav-links">
+    <a href="index.html" class="active">Practice</a>
+    <a href="dashboard.html">Sessions</a>
+    <a href="settings.html">Settings</a>
+  </div>
+</nav>
+
+<main>
+
+  <!-- WELCOME ROW -->
+  <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px;margin-bottom:8px;">
+    <div>
+      <h1 id="welcomeHeading">Welcome back 👋</h1>
+      <p id="streakText" style="margin:0;font-size:16px;color:var(--text2);">Loading streak...</p>
+    </div>
+    <div class="badge badge-orange" id="streakBadge" style="font-size:15px;padding:6px 16px;"></div>
+  </div>
+
+  <!-- TOPIC CARD -->
+  <div class="card" style="margin-top:24px;">
+    <div class="section-label">Today's Topic</div>
+    <div class="topic-display" id="topicDisplay">Press "New Topic" to get started</div>
+    <div style="display:flex;gap:10px;flex-wrap:wrap;">
+      <button class="btn btn-ghost" id="diceBtn" onclick="rollTopic()">
+        <span id="diceIcon">🎲</span> Roll Topic
+      </button>
+      <button class="btn btn-ghost" onclick="openCustomTopic()">Custom Topic</button>
+    </div>
+    <div id="customTopicWrap" class="hidden" style="margin-top:14px;display:flex;gap:10px;">
+      <input type="text" id="customTopicInput" placeholder="Enter your own topic..." style="flex:1;" />
+      <button class="btn btn-primary" onclick="setCustomTopic()">Set</button>
+    </div>
+  </div>
+
+  <!-- RECORDING CARD -->
+  <div class="card">
+    <div class="section-label">Recording</div>
+
+    <div class="record-wrap">
+      <div class="timer-display" id="timerDisplay">00:00</div>
+      <div class="timer-label" id="timerLabel">Ready to record</div>
+      <div class="timer-bar-wrap">
+        <div class="timer-bar" id="timerBar"></div>
+      </div>
+
+      <div class="waveform-wrap" style="margin-top:4px;">
+        <canvas id="waveform"></canvas>
+      </div>
+
+      <button class="record-btn" id="recordBtn" onclick="toggleRecording()" title="Start / Stop Recording">
+        <span id="recordIcon">⏺</span>
+      </button>
+      <div style="font-size:14px;color:var(--text3);text-align:center;">
+        <span id="recordHint">Click to start recording</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- PLAYBACK CARD (hidden until recorded) -->
+  <div class="card hidden" id="playbackCard">
+    <div class="section-label">Listen Back</div>
+    <h3 style="margin-bottom:12px;">Your Recording</h3>
+    <p style="font-size:15px;color:var(--text3);margin-bottom:12px;">
+      Note: This recording is only available in this browser tab. It will be gone if you reload.
+    </p>
+    <div class="audio-player">
+      <audio id="audioPlayback" controls></audio>
+    </div>
+  </div>
+
+  <!-- ANALYTICS CARD (hidden until analyzed) -->
+  <div class="card hidden" id="analyticsCard">
+    <div class="section-label">Session Analysis</div>
+    <h3 style="margin-bottom:16px;">How you spoke</h3>
+
+    <div class="analytics-grid">
+      <div class="stat-box">
+        <div class="stat-value" id="statSpeak">—</div>
+        <div class="stat-label">Speaking</div>
+      </div>
+      <div class="stat-box">
+        <div class="stat-value" id="statSilence">—</div>
+        <div class="stat-label">Silence</div>
+      </div>
+      <div class="stat-box">
+        <div class="stat-value" id="statPauses">—</div>
+        <div class="stat-label">Pauses</div>
+      </div>
+      <div class="stat-box" style="grid-column:span 3;">
+        <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;">
+          <div>
+            <div class="stat-label" style="text-align:left;margin-bottom:4px;">Speaking Pace</div>
+            <div style="font-size:13px;color:var(--text3);">How fast you speak — ideal is 130 to 160 words per minute</div>
+          </div>
+          <div style="text-align:right;">
+            <div class="stat-value" id="statWpm" style="font-size:28px;">—</div>
+            <div style="font-size:12px;color:var(--text3);">words / min</div>
+          </div>
+        </div>
+        <div id="wpmLabel" style="margin-top:10px;font-size:15px;"></div>
+      </div>
+    </div>
+
+    <div class="section-label" style="margin-top:4px;">Feedback</div>
+    <div class="feedback-box" id="feedbackBox"></div>
+
+    <!-- Session note -->
+    <div class="section-label" style="margin-top:20px;">Your Note</div>
+    <textarea id="sessionNote" placeholder='How did it feel? e.g. "Felt nervous, spoke too fast today"'
+      style="width:100%;font-family:var(--font-body);font-size:16px;color:var(--text);
+      background:var(--bg2);border:1.5px solid var(--border);border-radius:var(--radius-sm);
+      padding:12px 16px;resize:vertical;min-height:80px;outline:none;line-height:1.5;
+      transition:border-color 0.2s;"
+      onfocus="this.style.borderColor='var(--accent)'"
+      onblur="this.style.borderColor='var(--border)'"
+    ></textarea>
+
+    <div style="display:flex;gap:10px;margin-top:16px;flex-wrap:wrap;">
+      <button class="btn btn-primary" onclick="saveSession()">Save Session</button>
+      <button class="btn btn-ghost" onclick="resetSession()">Practice Again</button>
+    </div>
+    <p id="saveStatus" style="font-size:14px;color:var(--text3);margin-top:8px;"></p>
+  </div>
+
+  <!-- CALENDAR CARD -->
+  <div class="card" style="margin-top:8px;">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;">
+      <h3 style="margin:0;">This Month</h3>
+      <span id="monthLabel" style="font-size:14px;color:var(--text3);font-family:var(--font-mono);"></span>
+    </div>
+    <div class="calendar-grid" id="calendarGrid"></div>
+  </div>
+
+</main>
+
+<div class="toast" id="toast"></div>
+
+<script src="script.js"></script>
+</body>
+</html>
