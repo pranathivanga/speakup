@@ -6,7 +6,6 @@
    ============================================================ */
 
 function setTopicControlsDisabled(disabled) {
-  // Disable dice/topic buttons by ID and onclick attribute
   const diceBtn = document.getElementById('diceBtn');
   if (diceBtn) diceBtn.disabled = disabled;
 
@@ -48,7 +47,7 @@ const TOPICS = [
     "What makes a habit stick long term?",
     "A moment that taught you something unexpectedly",
     "A time you surprised yourself",
-    "A situation that didn’t go as planned",
+    "A situation that didn't go as planned",
     "A lesson you learned the hard way",
     "A moment you still think about often",
     "A challenge that changed how you see yourself",
@@ -120,16 +119,14 @@ let countdownSec = 0;
 let maxDuration = 60;
 let isRecording = false;
 
-// Analysis tracking — timestamp based, not frame counted
 let analysisData = {
-  totalSpeakingMs: 0,   // exact ms of speaking via performance.now()
+  totalSpeakingMs: 0,
   pauseCount: 0,
-  speakStart: null,     // timestamp when current speech segment started
-  silenceStart: null,   // timestamp when current silence segment started
-  lastState: null,      // 'speaking' | 'silent'
+  speakStart: null,
+  silenceStart: null,
+  lastState: null,
 };
 
-// Session result
 let sessionResult = null;
 let currentTopic = "";
 
@@ -139,7 +136,6 @@ document.addEventListener('DOMContentLoaded', () => {
   checkOnboarding();
   updateWelcome();
   renderCalendar();
-  // Set first topic silently without animation
   const idx = Math.floor(Math.random() * TOPICS.length);
   currentTopic = TOPICS[idx];
   document.getElementById('topicDisplay').textContent = currentTopic;
@@ -192,10 +188,8 @@ function rollTopic() {
   const icon = document.getElementById('diceIcon');
   const display = document.getElementById('topicDisplay');
 
-  // Shake animation
   btn.classList.add('dice-rolling');
 
-  // Cycle through dice faces rapidly during shake
   let cycleCount = 0;
   const faceInterval = setInterval(() => {
     icon.textContent = DICE_FACES[cycleCount % DICE_FACES.length];
@@ -207,20 +201,18 @@ function rollTopic() {
     btn.classList.remove('dice-rolling');
     icon.textContent = DICE_FACES[Math.floor(Math.random() * DICE_FACES.length)];
 
-    // Pick new topic (different from current)
     let idx;
     do { idx = Math.floor(Math.random() * TOPICS.length); }
     while (TOPICS[idx] === currentTopic && TOPICS.length > 1);
 
     currentTopic = TOPICS[idx];
     display.classList.remove('topic-animate');
-    void display.offsetWidth; // force reflow
+    void display.offsetWidth;
     display.textContent = currentTopic;
     display.classList.add('topic-animate');
   }, 580);
 }
 
-// Keep generateTopic as alias for first load
 function generateTopic() { rollTopic(); }
 
 function openCustomTopic() {
@@ -251,12 +243,10 @@ async function toggleRecording() {
 }
 
 async function startRecording() {
-  // Reset analytics
   analysisData = { totalSpeakingMs: 0, pauseCount: 0, speakStart: null, silenceStart: null, lastState: null };
   sessionResult = null;
   audioChunks = [];
 
-  // Hide any previous results
   document.getElementById('playbackCard').classList.add('hidden');
   document.getElementById('analyticsCard').classList.add('hidden');
   document.getElementById('saveStatus').textContent = '';
@@ -269,15 +259,24 @@ async function startRecording() {
     return;
   }
 
-  // Setup Web Audio API for analysis
-  audioContext = new (window.AudioContext || window.webkitAudioContext)();
+  // ── FIX: Create AudioContext and explicitly resume it ──
+  try {
+    audioContext = new (window.AudioContext || window.webkitAudioContext)();
+    if (audioContext.state === 'suspended') {
+      await audioContext.resume();
+    }
+  } catch (err) {
+    alert('Could not start audio processing. Please try a different browser.');
+    stream.getTracks().forEach(t => t.stop());
+    return;
+  }
+
   analyser = audioContext.createAnalyser();
   analyser.fftSize = 1024;
-  analyser.smoothingTimeConstant = 0.0; // raw frames — no averaging
+  analyser.smoothingTimeConstant = 0.0;
   sourceNode = audioContext.createMediaStreamSource(stream);
   sourceNode.connect(analyser);
 
-  // Setup MediaRecorder
   const mimeType = getSupportedMimeType();
   const options = mimeType ? { mimeType } : {};
   try {
@@ -296,19 +295,16 @@ async function startRecording() {
     finishRecording();
   };
 
-  mediaRecorder.start(100); // collect data every 100ms
+  mediaRecorder.start(100);
   isRecording = true;
 
-  // Disable topic controls during recording
   setTopicControlsDisabled(true);
 
-  // UI
   const btn = document.getElementById('recordBtn');
   btn.classList.add('recording');
   document.getElementById('recordIcon').textContent = '⏹';
   document.getElementById('recordHint').textContent = 'Recording... click to stop';
 
-  // Read maxDuration fresh (user may have changed in settings)
   maxDuration = parseInt(localStorage.getItem('speakup_duration') || '60');
   countdownSec = 0;
   startTimer();
@@ -323,10 +319,8 @@ function stopRecording() {
   finalizeAnalysis();
   mediaRecorder.stop();
 
-  // Re-enable topic controls
   setTopicControlsDisabled(false);
 
-  // UI reset
   const btn = document.getElementById('recordBtn');
   btn.classList.remove('recording');
   document.getElementById('recordIcon').textContent = '⏺';
@@ -348,25 +342,10 @@ function getSupportedMimeType() {
   return null;
 }
 
-// ── WPM ESTIMATION (audio-based, no Speech API needed) ───────
-/*
-  Method: use actual speaking time only (not total duration).
-  Research constants for conversational English:
-    - Average syllable rate while speaking: 4.4 syllables/sec
-    - Average syllables per word: 1.35
-    → Words per second of speech = 4.4 / 1.35 = 3.26 words/sec
-
-  We also track individual speech segment durations to compute
-  a rhythm consistency score — how evenly spaced your speech is.
-  High variance = choppy, low variance = smooth flow.
-
-  WPM = estimated total words / (total duration in minutes)
-  This matches how WPM is measured in real typing/speech tests —
-  total words over total elapsed time including pauses.
-*/
+// ── WPM ESTIMATION ───────────────────────────────────────────
 function estimateWPM(speakingSec, totalDurationSec) {
   if (speakingSec <= 0 || totalDurationSec <= 0) return 0;
-  const WORDS_PER_SPEAKING_SEC = 3.26; // 4.4 syllables/sec ÷ 1.35 syllables/word
+  const WORDS_PER_SPEAKING_SEC = 3.26;
   const estimatedWords = speakingSec * WORDS_PER_SPEAKING_SEC;
   const wpm = Math.round(estimatedWords / (totalDurationSec / 60));
   return wpm;
@@ -400,6 +379,7 @@ function getPaceLabel(wpm) {
     color: '#c0392b'
   };
 }
+
 function startTimer() {
   document.getElementById('timerLabel').textContent = `Recording — ${maxDuration}s max`;
   updateTimerDisplay();
@@ -434,8 +414,10 @@ function updateTimerDisplay() {
 function drawWaveform() {
   const canvas = document.getElementById('waveform');
   const ctx = canvas.getContext('2d');
-  const W = canvas.offsetWidth || 400;
-  const H = canvas.offsetHeight || 64;
+
+  // ── FIX: Use clientWidth/clientHeight as fallback for GitHub Pages ──
+  const W = canvas.offsetWidth || canvas.clientWidth || 400;
+  const H = canvas.offsetHeight || canvas.clientHeight || 64;
   canvas.width = W * window.devicePixelRatio;
   canvas.height = H * window.devicePixelRatio;
   ctx.scale(window.devicePixelRatio, window.devicePixelRatio);
@@ -443,25 +425,13 @@ function drawWaveform() {
   const bufferLength = analyser.frequencyBinCount;
   const dataArray = new Float32Array(bufferLength);
 
-  /*
-    THRESHOLD: 0.015 RMS on Float32 scale (-1 to 1).
-    Background noise ~0.001–0.005. Normal voice ~0.02–0.3.
-  */
   const THRESHOLD = 0.015;
-
-  /*
-    DEBOUNCE: Don't switch state until the new state has been
-    held for at least this many ms. Prevents breath gaps and
-    hard consonants (p, t, k) from breaking speech into pieces.
-    - 50ms debounce on silence: short gaps mid-word don't count
-    - 300ms debounce on pause counting: only real intentional pauses
-  */
   const SILENCE_DEBOUNCE_MS = 50;
   const PAUSE_MIN_MS = 300;
 
-  let pendingState = null;       // state we're waiting to confirm
-  let pendingStateStart = null;  // when we first saw that pending state
-  let confirmedState = null;     // the state we've committed to
+  let pendingState = null;
+  let pendingStateStart = null;
+  let confirmedState = null;
 
   function draw() {
     if (!isRecording) {
@@ -472,7 +442,6 @@ function drawWaveform() {
     animFrameId = requestAnimationFrame(draw);
     analyser.getFloatTimeDomainData(dataArray);
 
-    // Compute RMS
     let sumSq = 0;
     for (let i = 0; i < bufferLength; i++) sumSq += dataArray[i] * dataArray[i];
     const rms = Math.sqrt(sumSq / bufferLength);
@@ -480,24 +449,19 @@ function drawWaveform() {
     const rawState = rms >= THRESHOLD ? 'speaking' : 'silent';
     const now = performance.now();
 
-    // ── Debounced state machine ──
     if (rawState !== confirmedState) {
-      // We're seeing a different state — start or continue pending
       if (rawState !== pendingState) {
         pendingState = rawState;
         pendingStateStart = now;
       } else {
-        // How long have we been seeing this pending state?
         const pendingMs = now - pendingStateStart;
         const debounce = rawState === 'silent' ? SILENCE_DEBOUNCE_MS : 0;
 
         if (pendingMs >= debounce) {
-          // State confirmed — commit the transition
           const prev = confirmedState;
           confirmedState = rawState;
 
           if (prev === 'speaking' && rawState === 'silent') {
-            // Speech segment ended — accumulate exact ms
             if (analysisData.speakStart !== null) {
               analysisData.totalSpeakingMs += now - analysisData.speakStart;
               analysisData.speakStart = null;
@@ -505,7 +469,6 @@ function drawWaveform() {
             analysisData.silenceStart = now;
 
           } else if (prev === 'silent' && rawState === 'speaking') {
-            // Silence ended — check if it was long enough to be a pause
             if (analysisData.silenceStart !== null) {
               const silenceMs = now - analysisData.silenceStart;
               if (silenceMs >= PAUSE_MIN_MS) {
@@ -516,7 +479,6 @@ function drawWaveform() {
             analysisData.speakStart = now;
 
           } else if (prev === null) {
-            // Very first state
             if (rawState === 'speaking') analysisData.speakStart = now;
             else analysisData.silenceStart = now;
           }
@@ -526,14 +488,12 @@ function drawWaveform() {
         }
       }
     } else {
-      // Raw matches confirmed — clear pending
       pendingState = null;
       pendingStateStart = null;
     }
 
     const isSpeaking = confirmedState === 'speaking';
 
-    // ── Draw waveform ──
     const style = getComputedStyle(document.documentElement);
     const accent = style.getPropertyValue('--accent').trim();
     const bg2 = style.getPropertyValue('--bg2').trim();
@@ -556,7 +516,6 @@ function drawWaveform() {
   draw();
 }
 
-// Called just before finishRecording to close any open speaking segment
 function finalizeAnalysis() {
   const now = performance.now();
   if (analysisData.speakStart !== null) {
@@ -567,35 +526,29 @@ function finalizeAnalysis() {
 
 // ── FINISH RECORDING ─────────────────────────────────────────
 function finishRecording() {
-  // Build audio blob
   const mimeType = audioChunks[0]?.type || 'audio/webm';
   const blob = new Blob(audioChunks, { type: mimeType });
   const url = URL.createObjectURL(blob);
 
-  // Show playback
   const audio = document.getElementById('audioPlayback');
   audio.src = url;
   document.getElementById('playbackCard').classList.remove('hidden');
 
-  // Compute analytics from exact timestamps
   const recDuration = countdownSec;
   const speakingMs = analysisData.totalSpeakingMs;
   const speakingSec = Math.min(Math.round(speakingMs / 1000), recDuration);
   const silenceSec = Math.max(recDuration - speakingSec, 0);
   const pauses = analysisData.pauseCount;
 
-  // Accurate audio-based WPM estimation
   const wpm = estimateWPM(speakingSec, recDuration);
   const pace = getPaceLabel(wpm);
 
   sessionResult = { speakingSec, silenceSec, pauses, duration: recDuration, wpm };
 
-  // Display core stats
   document.getElementById('statSpeak').textContent = speakingSec + 's';
   document.getElementById('statSilence').textContent = silenceSec + 's';
   document.getElementById('statPauses').textContent = pauses;
 
-  // Display WPM with human label
   const wpmEl = document.getElementById('statWpm');
   if (wpmEl) wpmEl.textContent = wpm > 0 ? wpm : '—';
 
@@ -606,7 +559,6 @@ function finishRecording() {
     wpmLabelEl.textContent = 'Speak for at least 5 seconds to get a pace estimate.';
   }
 
-  // Generate feedback
   const showFeedback = localStorage.getItem('speakup_feedback') !== 'false';
   const feedbackText = generateFeedback(speakingSec, silenceSec, pauses, recDuration, wpm);
   sessionResult.feedbackText = feedbackText;
@@ -617,10 +569,8 @@ function finishRecording() {
   document.getElementById('analyticsCard').classList.remove('hidden');
   document.getElementById('timerLabel').textContent = `Recorded ${recDuration}s`;
 
-  // Reset timer bar
   document.getElementById('timerBar').style.width = '0%';
 
-  // Scroll to analytics
   setTimeout(() => {
     document.getElementById('analyticsCard').scrollIntoView({ behavior: 'smooth', block: 'start' });
   }, 300);
@@ -674,7 +624,7 @@ function generateFeedback(speakSec, silSec, pauses, duration, wpm) {
 // ── SAVE SESSION ─────────────────────────────────────────────
 function saveSession() {
   if (!sessionResult) return;
-  if (sessionResult.saved) return; // prevent duplicate saves
+  if (sessionResult.saved) return;
   sessionResult.saved = true;
 
   const sessions = JSON.parse(localStorage.getItem('speakup_sessions') || '[]');
@@ -695,11 +645,9 @@ function saveSession() {
   sessions.unshift(entry);
   localStorage.setItem('speakup_sessions', JSON.stringify(sessions));
 
-  // Update streak
   updateStreak(now);
 
   document.getElementById('saveStatus').textContent = 'Session saved successfully.';
-  // Disable save button to prevent duplicates
   const saveBtn = document.querySelector('[onclick="saveSession()"]');
   if (saveBtn) { saveBtn.disabled = true; saveBtn.textContent = 'Saved'; }
   showToast('Session saved!');
@@ -732,10 +680,7 @@ function updateStreak(now) {
   const lastDay = localStorage.getItem('speakup_streak_last');
   let streak = parseInt(localStorage.getItem('speakup_streak') || '0');
 
-  if (lastDay === todayStr) {
-    // Already practiced today — don't increment
-    return;
-  }
+  if (lastDay === todayStr) return;
 
   const yesterday = new Date(now);
   yesterday.setDate(yesterday.getDate() - 1);
@@ -746,7 +691,7 @@ function updateStreak(now) {
   } else if (!lastDay) {
     streak = 1;
   } else {
-    streak = 1; // Missed a day — reset
+    streak = 1;
   }
 
   localStorage.setItem('speakup_streak', streak.toString());
@@ -762,7 +707,7 @@ function getCurrentStreak() {
   const yesterday = toDateStr(new Date(Date.now() - 86400000));
 
   if (last === today || last === yesterday) return streak;
-  return 0; // Streak broken
+  return 0;
 }
 
 function toDateStr(d) {
@@ -782,7 +727,6 @@ function renderCalendar() {
   const daysInMonth = new Date(year, month + 1, 0).getDate();
   const todayDate = now.getDate();
 
-  // Get practiced days this month
   const sessions = JSON.parse(localStorage.getItem('speakup_sessions') || '[]');
   const practicedDays = new Set();
   sessions.forEach(s => {
@@ -795,7 +739,6 @@ function renderCalendar() {
   const grid = document.getElementById('calendarGrid');
   grid.innerHTML = '';
 
-  // Day headers
   ['Su','Mo','Tu','We','Th','Fr','Sa'].forEach(d => {
     const el = document.createElement('div');
     el.className = 'cal-header';
@@ -803,14 +746,12 @@ function renderCalendar() {
     grid.appendChild(el);
   });
 
-  // Empty cells
   for (let i = 0; i < firstDay; i++) {
     const el = document.createElement('div');
     el.className = 'cal-day empty';
     grid.appendChild(el);
   }
 
-  // Day cells
   for (let d = 1; d <= daysInMonth; d++) {
     const el = document.createElement('div');
     let cls = 'cal-day';
