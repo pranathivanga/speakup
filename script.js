@@ -59,6 +59,7 @@ let timerInterval = null;
 let countdownSec = 0;
 let maxDuration = 60;
 let isRecording = false;
+let silentGain = null;
 
 // Analysis tracking — timestamp based, not frame counted
 let analysisData = {
@@ -210,12 +211,18 @@ async function startRecording() {
   }
 
   // Setup Web Audio API for analysis
-  audioContext = new (window.AudioContext || window.webkitAudioContext)();
   analyser = audioContext.createAnalyser();
-  analyser.fftSize = 1024;
-  analyser.smoothingTimeConstant = 0.0; // raw frames — no averaging
-  sourceNode = audioContext.createMediaStreamSource(stream);
-  sourceNode.connect(analyser);
+analyser.fftSize = 1024;
+analyser.smoothingTimeConstant = 0.0;
+
+silentGain = audioContext.createGain();
+silentGain.gain.value = 0;
+
+sourceNode = audioContext.createMediaStreamSource(stream);
+sourceNode.connect(analyser);
+analyser.connect(silentGain);
+silentGain.connect(audioContext.destination);
+
 
   // Setup MediaRecorder
   const mimeType = getSupportedMimeType();
