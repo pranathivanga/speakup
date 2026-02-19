@@ -211,9 +211,14 @@ async function startRecording() {
   }
 
   // Setup Web Audio API for analysis
-  analyser = audioContext.createAnalyser();
+ // Setup Web Audio API for analysis (SAFE + PROD-READY)
+if (!audioContext) {
+  audioContext = new (window.AudioContext || window.webkitAudioContext)();
+}
+
+analyser = audioContext.createAnalyser();
 analyser.fftSize = 1024;
-analyser.smoothingTimeConstant = 0.0;
+analyser.smoothingTimeConstant = 0;
 
 silentGain = audioContext.createGain();
 silentGain.gain.value = 0;
@@ -222,6 +227,7 @@ sourceNode = audioContext.createMediaStreamSource(stream);
 sourceNode.connect(analyser);
 analyser.connect(silentGain);
 silentGain.connect(audioContext.destination);
+
 
 
   // Setup MediaRecorder
