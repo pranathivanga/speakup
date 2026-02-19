@@ -1,113 +1,24 @@
-SpeakUp 🎤
+# SpeakUp — Speaking Practice Web App
 
-Impromptu speaking practice — right in your browser.
+SpeakUp is a browser-based web application designed to help users improve spontaneous speaking and delivery.
+It records short speaking sessions and analyzes speaking time, silence, pauses, and estimated speaking pace (WPM).
 
-SpeakUp is a frontend-only web app that helps you practice imppromptu speaking by recording your response to a random prompt and analyzing how you speak, not what you say.
+## Tech Stack
+HTML5, CSS3, Vanilla JavaScript, MediaRecorder API, Web Audio API (post-record analysis), LocalStorage
 
-No account · No install · No backend
+## Key Features
+- Real microphone recording
+- Speaking vs silence detection
+- Pause counting using RMS-based audio analysis
+- Estimated speaking pace (WPM)
+- Session history, streak tracking, and calendar view
+- Local-only, privacy-friendly data storage
 
-🔗 Live Demo: https://pranathivanga.github.io/speakup/
+## Technical Note
+Audio analysis is performed after recording using decoded audio buffers instead of live microphone analysis.
+This approach improves reliability across browsers and environments.
 
-
-✨ Why SpeakUp?
-
-Most speaking tools focus on content.
-SpeakUp focuses on delivery.
-
-It helps you improve articulation by tracking:
-
-speaking time
-
-silence time
-
-pause frequency
-
-All feedback is instant and private.
-
-🚀 What SpeakUp does:
-
-Each practice session:
-
-🎲 generates a random speaking prompt
-
-🎙️ records your voice for a fixed duration
-
-📊 analyzes speaking vs silence in real time
-
-⏸ detects meaningful pauses (not breath gaps)
-
-📝 provides clear, plain-English feedback
-
-💾 saves session history locally
-
-Nothing is uploaded.
-Everything stays in your browser.
-
-🧩 Features:
-
-🎙️ Real audio recording (MediaRecorder API)
-
-⏱️ Configurable duration: 30 / 60 / 90 seconds
-
-🎲 Random topic generator
-
-📊 Speaking time, silence time, pause detection
-
-📝 Human-readable feedback (no vague scores)
-
-📅 Practice calendar with active days highlighted
-
-🔥 Daily streak tracking
-
-🌙 Dark mode
-
-💾 Local persistence using localStorage
-
-🧠 How the analysis works:
-
-Voice activity detected using RMS amplitude (Web Audio API)
-
-Speaking & silence measured using high-precision timestamps (performance.now)
-
-Short breath gaps ignored to prevent false pauses
-
-Speaking pace (WPM) estimated from actual speaking time
-
-No speech-to-text
-No content analysis
-No AI guessing
-
-🛠 Tech Stack:
-
-Languages
-
-HTML
-
-CSS
-
-Vanilla JavaScript
-
-Browser APIs
-
-MediaRecorder API
-
-Web Audio API
-
-localStorage
-
-performance.now
-
-No frameworks.
-No dependencies.
-No build step.
-
-▶️ Run locally:
-git clone https://github.com/yourusername/speakup
-cd speakup
-python -m http.server 8000
-
-
-Open:
-http://localhost:8000
-
-A local server is required. Browser microphone access does not work with file:// URLs.
+## How to Run
+- Open the project in a modern browser (Chrome recommended)
+- Allow microphone access when prompted
+- No backend or build steps required
